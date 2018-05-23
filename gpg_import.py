@@ -199,18 +199,21 @@ class GpgImport(object):
             self.key_id = key_override
         self.commands = {
             'check':   '{bin_path} {check_mode} --list-keys {key_id}',
-            'delete':  '{bin_path} {check_mode} --batch --yes --delete-secret-and-public-keys {key_id}',
+            'delete':  '{bin_path} {check_mode} --batch --yes {no_default_keyring} {secret_keyring} {public_keyring} --delete-secret-and-public-keys {key_id}',
             'refresh': '{bin_path} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --refresh-keys {key_id}',
-            'check-private':  '{bin_path} {check_mode} --list-secret-keys {key_id}',
+            'check-private':  '{bin_path} {check_mode} {no_default_keyring} {public_keyring} {secret_keyring} --list-secret-keys {key_id}',
             'recv':    '{bin_path} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --recv-keys {key_id}',
-            'check-public':  '{bin_path} {check_mode} --list-public-keys {key_id}',
-            'import-key': '{bin_path} {check_mode} --batch --import {key_file}'
+            'check-public':  '{bin_path} {check_mode} {no_default_keyring} {public_keyring} --list-public-keys {key_id}',
+            'import-key': '{bin_path} {check_mode} --batch {no_default_keyring} {secret_keyring} {public_keyring} --import {key_file}'
         }
         command_data = {
             'check_mode': '--dry-run' if self.m.check_mode else '',
             'bin_path': self.m.get_bin_path(self.bin_path, True),
             'key_id': self.key_id,
-            'key_file': self.key_file
+            'key_file': self.key_file,
+            'no_default_keyring': '--no-default-keyring' if self.keyring_file is not None or self.secret_keyring_file is not None else '',
+            'public_keyring': ('--keyring %s' % self.keyring_file) if self.keyring_file is not None else '',
+            'secret_keyring': ('--secret-keyring %s' % self.secret_keyring_file) if self.secret_keyring_file is not None else ''
         }
         # sort of a brilliant way of late-binding/double-formatting given here: http://stackoverflow.com/a/17215533/659298
         for c,l in self.commands.items():
@@ -272,6 +275,8 @@ def main():
         argument_spec = dict(
             key_id=dict(required=False, type='str'),
             key_file=dict(required=False, type='str'),
+            keyring_file=dict(required=False, type='str'),
+            secret_keyring_file=dict(required=False, type='str'),
             servers=dict(default=['keys.gnupg.net'], type='list'),
             bin_path=dict(default='/usr/bin/gpg', type='str'),
             tries=dict(default=3, type='int'),
